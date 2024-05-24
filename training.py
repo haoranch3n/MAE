@@ -5,10 +5,51 @@ import torch
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import ToTensor, Compose, Normalize
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+from torchvision import transforms
 from tqdm import tqdm
+from PIL import Image
 
 from model import *
 from utils import setup_seed
+
+
+def list_files(dataset_path):
+    print("Listing files in:", dataset_path)
+    images = []
+    for root, _, files in sorted(os.walk(dataset_path)):
+        for name in sorted(files):
+            if name.lower().endswith('.tif'):
+                images.append(os.path.join(root, name))
+    print(f"Found {len(images)} .tif files.")
+    return images
+
+
+class CustomImageDataset(Dataset):
+    """The above class is a custom dataset class for images in PyTorch."""
+    def __init__(self, img_dir):
+        self.img_dir = img_dir
+        self.images = list_files(self.img_dir)
+        self.transform =  transforms.Compose([
+                            transforms.Resize(252),
+                            transforms.CenterCrop(252),
+                            transforms.ToTensor(),
+                            transforms.Normalize([0.485, 0.456, 0.406],
+                                                [0.229, 0.224, 0.225])
+                        ])
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        img_path = self.images[idx]
+        image = Image.open(img_path).convert("RGB")
+        if self.transform:
+            image = self.transform(image)
+        return image, img_path
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -21,7 +62,8 @@ if __name__ == '__main__':
     parser.add_argument('--mask_ratio', type=float, default=0.75)
     parser.add_argument('--total_epoch', type=int, default=2000)
     parser.add_argument('--warmup_epoch', type=int, default=50)  # Shorter warm-up period for fine-tuning
-    parser.add_argument('--model_path', type=str, default='vit-t-mae.pt')
+    parser.add_argument('--data_path', type=str, default='/data/fundus')
+    parser.add_argument('--output_model_path', type=str, default='/model/fundus-vit-t-mae.pt')
     parser.add_argument('--pretrained_model_path', type=str, help='Path to the pre-trained model')
 
     args = parser.parse_args()
@@ -36,9 +78,9 @@ if __name__ == '__main__':
 
     # Placeholder for loading new data
     # Replace the following lines with code to load your new dataset
-    # train_dataset = torchvision.datasets.FakeData(transform=Compose([ToTensor(), Normalize(0.5, 0.5)]))
-    # dataloader = torch.utils.data.DataLoader(train_dataset, load_batch_size, shuffle=True, num_workers=4)
-    train_dataset = torchvision.datasets.CIFAR10('data', train=True, download=True, transform=Compose([ToTensor(), Normalize(0.5, 0.5)]))
+    # train_dataset = torchvision.datasets.CIFAR10('data', train=True, download=True, transform=Compose([ToTensor(), Normalize(0.5, 0.5)]))
+    train_dataset = CustomImageDataset(args.data_path)
+
     dataloader = torch.utils.data.DataLoader(train_dataset, load_batch_size, shuffle=True, num_workers=4)
 
     writer = SummaryWriter(os.path.join('logs', 'new_data', 'mae-pretrain'))
