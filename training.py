@@ -36,9 +36,11 @@ if __name__ == '__main__':
 
     # Placeholder for loading new data
     # Replace the following lines with code to load your new dataset
-    train_dataset = torchvision.datasets.FakeData(transform=Compose([ToTensor(), Normalize(0.5, 0.5)]))
+    # train_dataset = torchvision.datasets.FakeData(transform=Compose([ToTensor(), Normalize(0.5, 0.5)]))
+    # dataloader = torch.utils.data.DataLoader(train_dataset, load_batch_size, shuffle=True, num_workers=4)
+    train_dataset = torchvision.datasets.CIFAR10('data', train=True, download=True, transform=Compose([ToTensor(), Normalize(0.5, 0.5)]))
     dataloader = torch.utils.data.DataLoader(train_dataset, load_batch_size, shuffle=True, num_workers=4)
-    
+
     writer = SummaryWriter(os.path.join('logs', 'new_data', 'mae-pretrain'))
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
